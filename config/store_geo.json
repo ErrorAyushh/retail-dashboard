@@ -1,0 +1,552 @@
+{
+  "Inorbit_Vizag": {
+    "display_name": "Inorbit Vizag",
+    "city": "Visakhapatnam",
+    "state": "Andhra Pradesh",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.6868,
+    "lng": 83.2185,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Kankarbagh_Patna": {
+    "display_name": "Kankarbagh Patna",
+    "city": "Patna",
+    "state": "Bihar",
+    "zone": "Central & East",
+    "store_type": "Franchise",
+    "lat": 25.5941,
+    "lng": 85.1376,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Sagunamore_Patna": {
+    "display_name": "Sagunamore Patna",
+    "city": "Patna",
+    "state": "Bihar",
+    "zone": "Central & East",
+    "store_type": "Franchise",
+    "lat": 25.612,
+    "lng": 85.044,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Raipur City Centre Mall": {
+    "display_name": "Raipur City Centre Mall",
+    "city": "Raipur",
+    "state": "Chhattisgarh",
+    "zone": "Central & East",
+    "store_type": "Franchise",
+    "lat": 21.2514,
+    "lng": 81.6296,
+    "first_bill_date": "2026-10-13"
+  },
+  "Kamlanagar_Delhi": {
+    "display_name": "Kamla Nagar Delhi",
+    "city": "Delhi",
+    "state": "Delhi",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 28.6811,
+    "lng": 77.2057,
+    "first_bill_date": "2026-10-13"
+  },
+  "Rohini_Delhi": {
+    "display_name": "Rohini Delhi",
+    "city": "Delhi",
+    "state": "Delhi",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 28.7041,
+    "lng": 77.1025,
+    "first_bill_date": "2026-10-13"
+  },
+  "MG_Road__Panjim_Goa": {
+    "display_name": "MG Road Panjim Goa",
+    "city": "Panaji",
+    "state": "Goa",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 15.4909,
+    "lng": 73.8278,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_4D_Square": {
+    "display_name": "4D Square Motera",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 23.098,
+    "lng": 72.593,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Bopal_Ahmedabad": {
+    "display_name": "Bopal Ahmedabad",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 23.0338,
+    "lng": 72.4634,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_CG_Road_Ahmedabad": {
+    "display_name": "CG Road Ahmedabad",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 23.0304,
+    "lng": 72.5567,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Maninagar_Ahmedabad": {
+    "display_name": "Maninagar Ahmedabad",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 22.9978,
+    "lng": 72.6033,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Nikol_Ahmedabad": {
+    "display_name": "Nikol Ahmedabad",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 23.045,
+    "lng": 72.671,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Relief_road": {
+    "display_name": "Relief Road Ahmedabad",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 23.027,
+    "lng": 72.587,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Ghod_dod_Surat": {
+    "display_name": "Ghod Dod Surat",
+    "city": "Surat",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 21.176,
+    "lng": 72.805,
+    "first_bill_date": "2026-10-13"
+  },
+  "VR_Surat": {
+    "display_name": "VR Surat",
+    "city": "Surat",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 21.1444,
+    "lng": 72.7561,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Anand": {
+    "display_name": "Anand",
+    "city": "Anand",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 22.5645,
+    "lng": 72.9289,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Junagadh": {
+    "display_name": "Junagadh",
+    "city": "Junagadh",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 21.5222,
+    "lng": 70.4579,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Rajkot_Twin_Star": {
+    "display_name": "Rajkot Twin Star",
+    "city": "Rajkot",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 22.3039,
+    "lng": 70.8022,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_Gandhidham_Gujarat": {
+    "display_name": "Gandhidham Gujarat",
+    "city": "Gandhidham",
+    "state": "Gujarat",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 23.0753,
+    "lng": 70.1337,
+    "first_bill_date": "2026-10-13"
+  },
+  "Airia_Gurugram": {
+    "display_name": "Airia Mall Gurugram",
+    "city": "Gurugram",
+    "state": "Haryana",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 28.3965,
+    "lng": 77.0514,
+    "first_bill_date": "2026-10-13"
+  },
+  "Hsr_Bangalore": {
+    "display_name": "HSR Layout Bangalore",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 12.9121,
+    "lng": 77.6446,
+    "first_bill_date": "2026-10-13"
+  },
+  "Indiranagar_Bangalore": {
+    "display_name": "Indiranagar Bangalore",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 12.9784,
+    "lng": 77.6408,
+    "first_bill_date": "2026-10-13"
+  },
+  "Orion_Gateway_Bangalore": {
+    "display_name": "Orion Gateway Bangalore",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 13.0112,
+    "lng": 77.555,
+    "first_bill_date": "2026-10-13"
+  },
+  "Orion_Uptown_Bangalore": {
+    "display_name": "Orion Uptown Bangalore",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 13.0694,
+    "lng": 77.7472,
+    "first_bill_date": "2026-10-13"
+  },
+  "HiLite_Calicut": {
+    "display_name": "HiLite Calicut",
+    "city": "Kozhikode",
+    "state": "Kerala",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 11.2588,
+    "lng": 75.7804,
+    "first_bill_date": "2026-10-13"
+  },
+  "Lulu_Kochi": {
+    "display_name": "Lulu Mall Kochi",
+    "city": "Kochi",
+    "state": "Kerala",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 10.027,
+    "lng": 76.308,
+    "first_bill_date": "2026-10-13"
+  },
+  "Lulu_Trivandrum": {
+    "display_name": "Lulu Mall Trivandrum",
+    "city": "Thiruvananthapuram",
+    "state": "Kerala",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 8.49,
+    "lng": 76.89,
+    "first_bill_date": "2026-10-13"
+  },
+  "Infinity_Neemans": {
+    "display_name": "Infiniti Mall Malad Mumbai",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 19.1843,
+    "lng": 72.8347,
+    "first_bill_date": "2026-10-13"
+  },
+  "Kurla_Phoenix_Mumbai": {
+    "display_name": "Phoenix Marketcity Kurla",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 19.0866,
+    "lng": 72.889,
+    "first_bill_date": "2026-10-13"
+  },
+  "Nexus_Neemans": {
+    "display_name": "Nexus Seawoods Navi Mumbai",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 19.02,
+    "lng": 73.018,
+    "first_bill_date": "2026-10-13"
+  },
+  "Rcity_Mumbai": {
+    "display_name": "R City Mall Ghatkopar",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 19.0997,
+    "lng": 72.9163,
+    "first_bill_date": "2026-10-13"
+  },
+  "Dombivali_Xperia_Mall": {
+    "display_name": "Xperia Mall Dombivli",
+    "city": "Dombivli",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 19.2183,
+    "lng": 73.0867,
+    "first_bill_date": "2026-10-13"
+  },
+  "College_Road_Nashik": {
+    "display_name": "College Road Nashik",
+    "city": "Nashik",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Own store",
+    "lat": 19.9975,
+    "lng": 73.7898,
+    "first_bill_date": "2026-10-31"
+  },
+  "F_Prozone_Aurangabad": {
+    "display_name": "Prozone Mall Aurangabad",
+    "city": "Aurangabad",
+    "state": "Maharashtra",
+    "zone": "West",
+    "store_type": "Franchise",
+    "lat": 19.8762,
+    "lng": 75.3433,
+    "first_bill_date": "2026-10-13"
+  },
+  "F_DB_Mall_Bhopal": {
+    "display_name": "DB Mall Bhopal",
+    "city": "Bhopal",
+    "state": "Madhya Pradesh",
+    "zone": "Central & East",
+    "store_type": "Franchise",
+    "lat": 23.233,
+    "lng": 77.433,
+    "first_bill_date": "2026-10-13"
+  },
+  "Phoenix_Indore": {
+    "display_name": "Phoenix Citadel Indore",
+    "city": "Indore",
+    "state": "Madhya Pradesh",
+    "zone": "Central & East",
+    "store_type": "Own store",
+    "lat": 22.7533,
+    "lng": 75.8937,
+    "first_bill_date": "2026-10-13"
+  },
+  "Cosmo_Zirakpur": {
+    "display_name": "Cosmo Mall Zirakpur",
+    "city": "Zirakpur",
+    "state": "Punjab",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 30.6425,
+    "lng": 76.8173,
+    "first_bill_date": "2026-10-13"
+  },
+  "Creekside_Ludhiana": {
+    "display_name": "Creekside Mall Ludhiana",
+    "city": "Ludhiana",
+    "state": "Punjab",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 30.901,
+    "lng": 75.8573,
+    "first_bill_date": "2026-11-09"
+  },
+  "Jalandhar_Model_Town": {
+    "display_name": "Model Town Jalandhar",
+    "city": "Jalandhar",
+    "state": "Punjab",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 31.306,
+    "lng": 75.58,
+    "first_bill_date": "2026-10-13"
+  },
+  "Mohali_Walk__Punjab": {
+    "display_name": "CP67 Mohali Walk",
+    "city": "Mohali",
+    "state": "Punjab",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 30.7046,
+    "lng": 76.7179,
+    "first_bill_date": "2026-10-13"
+  },
+  "Pacific_Mall_Jaipur": {
+    "display_name": "Pacific Mall Jaipur",
+    "city": "Jaipur",
+    "state": "Rajasthan",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 26.852,
+    "lng": 75.805,
+    "first_bill_date": "2026-10-13"
+  },
+  "Vaishali_Jaipur": {
+    "display_name": "Vaishali Nagar Jaipur",
+    "city": "Jaipur",
+    "state": "Rajasthan",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 26.908,
+    "lng": 75.742,
+    "first_bill_date": "2026-10-13"
+  },
+  "Jodhpur_C__road": {
+    "display_name": "C Road Jodhpur",
+    "city": "Jodhpur",
+    "state": "Rajasthan",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 26.2389,
+    "lng": 73.0243,
+    "first_bill_date": "2026-10-13"
+  },
+  "Mittal_Mall_Ajmer": {
+    "display_name": "Mittal Mall Ajmer",
+    "city": "Ajmer",
+    "state": "Rajasthan",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 26.4499,
+    "lng": 74.6399,
+    "first_bill_date": "2026-10-13"
+  },
+  "Sri_Ganganagar": {
+    "display_name": "Sri Ganganagar",
+    "city": "Sri Ganganagar",
+    "state": "Rajasthan",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 29.9038,
+    "lng": 73.8772,
+    "first_bill_date": "2026-10-13"
+  },
+  "ASRao_Hyderabad": {
+    "display_name": "AS Rao Nagar Hyderabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.4851,
+    "lng": 78.5473,
+    "first_bill_date": "2026-10-29"
+  },
+  "Inorbit_Hyderabad": {
+    "display_name": "Inorbit Mall Cyberabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.434,
+    "lng": 78.3867,
+    "first_bill_date": "2026-10-13"
+  },
+  "Lakeshore-Hyderabad": {
+    "display_name": "Lakeshore Hyderabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.45,
+    "lng": 78.37,
+    "first_bill_date": "2026-10-13"
+  },
+  "Lulu_Hyderabad": {
+    "display_name": "Lulu Mall Hyderabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.4947,
+    "lng": 78.3916,
+    "first_bill_date": "2026-10-13"
+  },
+  "Punjagutta_Hyd": {
+    "display_name": "Punjagutta Hyderabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.4256,
+    "lng": 78.4522,
+    "first_bill_date": "2026-10-13"
+  },
+  "SCCM_Neemans": {
+    "display_name": "Sarath City Capital Mall Hyderabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.4578,
+    "lng": 78.3639,
+    "first_bill_date": "2026-10-13"
+  },
+  "Trimulgherry_Hyderabad": {
+    "display_name": "Trimulgherry Secunderabad",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "zone": "South",
+    "store_type": "Own store",
+    "lat": 17.477,
+    "lng": 78.508,
+    "first_bill_date": "2026-10-13"
+  },
+  "Dehradun_Rajpura_Road": {
+    "display_name": "Rajpur Road Dehradun",
+    "city": "Dehradun",
+    "state": "Uttarakhand",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 30.34,
+    "lng": 78.06,
+    "first_bill_date": "2026-10-13"
+  },
+  "Hazratganj_Lucknow": {
+    "display_name": "Hazratganj Lucknow",
+    "city": "Lucknow",
+    "state": "Uttar Pradesh",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 26.85,
+    "lng": 80.94,
+    "first_bill_date": "2026-10-13"
+  },
+  "LA_City Center_Bareily": {
+    "display_name": "LA City Center Bareilly",
+    "city": "Bareilly",
+    "state": "Uttar Pradesh",
+    "zone": "North",
+    "store_type": "Own store",
+    "lat": 28.367,
+    "lng": 79.4304,
+    "first_bill_date": "2026-10-13"
+  }
+}
