@@ -37,13 +37,25 @@ def check_can_view_pii(request: Request) -> bool:
 
 # PII masking helpers
 def mask_mobile(mobile: str) -> str:
-    """Masks mobile number: 9876543210 -> XXXXXX3210"""
-    if not mobile:
-        return "Unknown"
-    cleaned = re.sub(r"\D", "", str(mobile))
+    """Masks mobile number: 9876543210 -> 98xxxxxx10"""
+    if not mobile or str(mobile).strip() in ["", "—", "None", "Unknown"]:
+        return "—"
+    cleaned = re.sub(r"\D", "", str(mobile).strip())
     if len(cleaned) >= 4:
-        return "X" * (len(cleaned) - 4) + cleaned[-4:]
-    return "XXXX"
+        return cleaned[:2] + ("x" * (len(cleaned) - 4)) + cleaned[-2:]
+    return "xxxx"
+
+def mask_email(email: str) -> str:
+    """Masks email: rahul.sharma@gmail.com -> r***a@gmail.com"""
+    if not email or "@" not in str(email):
+        return "—"
+    parts = str(email).strip().split("@", 1)
+    user, domain = parts[0], parts[1]
+    if len(user) <= 2:
+        masked_user = user[0] + "*"
+    else:
+        masked_user = user[0] + ("*" * (len(user) - 2)) + user[-1]
+    return f"{masked_user}@{domain}"
 
 def mask_name(name: str) -> str:
     """Masks customer name to initials: 'Rahul Sharma' -> 'R. S.'"""
@@ -76,7 +88,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             process_time = (time.time() - start_time) * 1000
             response.headers["X-Process-Time-Ms"] = f"{process_time:.2f}"
-            logger.info(f"{request.method} {safe_url} - Status: {response.status_code} in {process_time:.1f}ms")
+            response.headers["X-Cache"] = "HIT" if getattr(request.state, "cache_hit", False) else "MISS"
+            logger.info(f"{request.method} {safe_url} - Status: {response.status_code} in {process_time:.1f}ms [Cache: {response.headers['X-Cache']}]")
             return response
         except Exception as e:
             process_time = (time.time() - start_time) * 1000

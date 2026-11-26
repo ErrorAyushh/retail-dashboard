@@ -11,7 +11,7 @@ from fastapi import APIRouter, Query
 from backend.db import execute_query, build_filter_clause
 from backend.metrics import get_sql_metric_aggregates, compute_derived_metrics
 from backend.cache import cache
-from backend.config import VIEW_NAME, DEFAULT_STORE_TYPE, DATA_MIN_DATE, DATA_MAX_DATE
+from backend.config import VIEW_NAME, DEFAULT_STORE_TYPE, DATA_MIN_DATE
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 

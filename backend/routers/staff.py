@@ -52,10 +52,10 @@ def get_staff_leaderboard(
 
     cache_params = {
         "s": start_date or "", "e": end_date or "", "st": store_type or "",
-        "reg": ",".join(sorted(regions)) if regions else "",
-        "sto": ",".join(sorted(stores)) if stores else "",
-        "gen": ",".join(sorted(genders)) if genders else "",
-        "dep": ",".join(sorted(departments)) if departments else "",
+        "reg": ",".join(sorted(regions)) if isinstance(regions, list) else "",
+        "sto": ",".join(sorted(stores)) if isinstance(stores, list) else "",
+        "gen": ",".join(sorted(genders)) if isinstance(genders, list) else "",
+        "dep": ",".join(sorted(departments)) if isinstance(departments, list) else "",
         "p": product or "", "mb": effective_min_bills, "iu": include_unassigned
     }
     cached = cache.get("staff:leaderboard", cache_params)

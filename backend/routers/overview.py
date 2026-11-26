@@ -4,13 +4,14 @@ Provides KPIs with previous period deltas, daily trends, day-of-week and hourly 
 store split, top/bottom stores with sparklines, hero period snapshot, waterfalls, pareto, and rule-based insights.
 """
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, date
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
-from backend.db import execute_query, build_filter_clause
+from backend.db import execute_query, build_filter_clause, get_max_date, get_data_version
 from backend.metrics import get_sql_metric_aggregates, compute_derived_metrics, METRIC_REGISTRY
 from backend.cache import cache
 from backend.geo import load_store_geo, is_new_store
@@ -18,7 +19,6 @@ from backend.config import (
     VIEW_NAME,
     DEFAULT_STORE_TYPE,
     DATA_MIN_DATE,
-    DATA_MAX_DATE,
     INSIGHT_THRESHOLDS,
 )
 
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/overview", tags=["overview"])
 
 @router.get("")
 def get_overview(
+    request: Request,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     store_type: Optional[str] = Query(DEFAULT_STORE_TYPE),
@@ -36,8 +37,9 @@ def get_overview(
     product: Optional[str] = Query(None),
     compare: Optional[bool] = Query(True),
 ):
-    # Default date range to last 7 days of available data if not passed
-    e_date = end_date or DATA_MAX_DATE
+    # Dynamic date range fallback to BigQuery latest available date
+    max_d = get_max_date()
+    e_date = end_date or max_d
     if start_date:
         s_date = start_date
     else:
@@ -45,13 +47,14 @@ def get_overview(
             e_dt_calc = datetime.fromisoformat(e_date).date()
             s_date = (e_dt_calc - timedelta(days=6)).isoformat()
         except Exception:
-            s_date = "2026-11-10"
+            s_date = (datetime.fromisoformat(max_d).date() - timedelta(days=6)).isoformat()
 
     if s_date < DATA_MIN_DATE:
         s_date = DATA_MIN_DATE
     if e_date < s_date:
         e_date = s_date
 
+    data_version = get_data_version()
     cache_params = {
         "s": s_date, "e": e_date, "st": store_type,
         "reg": ",".join(sorted(regions)) if regions else "",
@@ -60,7 +63,7 @@ def get_overview(
         "dep": ",".join(sorted(departments)) if departments else "",
         "p": product or "", "cmp": compare
     }
-    cached = cache.get("overview", cache_params)
+    cached = cache.get("overview", cache_params, data_version=data_version, request=request)
     if cached:
         return cached
 
@@ -129,14 +132,8 @@ def get_overview(
     )
     SELECT * FROM curr UNION ALL SELECT * FROM prev
     """
-    kpi_rows = execute_query(kpi_sql, params_curr + params_prev)
-    curr_raw = next((r for r in kpi_rows if r["period"] == "curr"), {})
-    prev_raw = next((r for r in kpi_rows if r["period"] == "prev"), {})
 
-    kpi_curr = compute_derived_metrics(curr_raw)
-    kpi_prev = compute_derived_metrics(prev_raw) if prev_raw else None
-
-    # Query 2: Daily trend (Current period + Prior period daily align)
+    # Query 2: Daily trend (Current period)
     agg_sql = f"""
     WITH base AS (
         SELECT
@@ -174,11 +171,6 @@ def get_overview(
     GROUP BY bill_date, day_short, day_full, is_weekend
     ORDER BY bill_date
     """
-    daily_rows = execute_query(agg_sql, params_curr)
-    for d in daily_rows:
-        d["aov"] = round(d["net_sales_incl_gst"] / d["bills"], 2) if d["bills"] > 0 else 0
-        d["margin_pct"] = round((d["gross_margin"] / d["net_sales_ex_gst"]) * 100.0, 1) if d["net_sales_ex_gst"] > 0 else 0
-        d["discount_pct"] = round((d["sale_discount"] / d["sale_mrp_value"]) * 100.0, 1) if d["sale_mrp_value"] > 0 else 0
 
     # Query 3: Hourly heatmap (bill_hour x weekday)
     hourly_sql = f"""
@@ -193,7 +185,6 @@ def get_overview(
     GROUP BY bill_hour, weekday, day_num
     ORDER BY day_num, bill_hour
     """
-    hourly_rows = execute_query(hourly_sql, params_curr)
 
     # Query 4: Store type split (Own vs Franchise)
     split_sql = f"""
@@ -209,12 +200,8 @@ def get_overview(
     GROUP BY store_type
     ORDER BY net_sales DESC
     """
-    split_rows = execute_query(split_sql, params_curr)
-    total_sales = sum(r["net_sales"] for r in split_rows) or 1
-    for r in split_rows:
-        r["share_pct"] = round((r["net_sales"] / total_sales) * 100.0, 1)
 
-    # Query 5: Stores performance (for top 5 / bottom 5 with sparklines & Pareto 80/20)
+    # Query 5: Stores performance
     store_perf_sql = f"""
     SELECT
         store_name,
@@ -229,7 +216,169 @@ def get_overview(
     GROUP BY store_name, store_type
     ORDER BY net_sales DESC
     """
-    store_perf_rows = execute_query(store_perf_sql, params_curr)
+
+    # Query 6: Day of week averages
+    dow_sql = f"""
+    WITH daily_store_sales AS (
+        SELECT
+            bill_date,
+            FORMAT_DATE('%A', bill_date) AS day_name,
+            FORMAT_DATE('%a', bill_date) AS day_short,
+            EXTRACT(DAYOFWEEK FROM bill_date) AS day_num,
+            COALESCE(SUM(amount_incl_gst), 0) AS net_sales
+        FROM `{VIEW_NAME}`
+        WHERE {where_curr}
+        GROUP BY bill_date, day_name, day_short, day_num
+    )
+    SELECT
+        day_name,
+        day_short,
+        day_num,
+        AVG(net_sales) AS avg_sales,
+        COUNT(bill_date) AS days_count
+    FROM daily_store_sales
+    GROUP BY day_name, day_short, day_num
+    ORDER BY day_num
+    """
+
+    # Query 7: Hero strip snapshot
+    try:
+        t1_dt = datetime.fromisoformat(e_date).date()
+    except Exception:
+        t1_dt = date(2026, 11, 25)
+
+    yest_date_str = t1_dt.isoformat()
+    yest_prev_date_str = (t1_dt - timedelta(days=1)).isoformat()
+
+    l7_start_dt = t1_dt - timedelta(days=6)
+    l7_start_str = l7_start_dt.isoformat()
+    l7_prev_end_dt = l7_start_dt - timedelta(days=1)
+    l7_prev_start_dt = l7_prev_end_dt - timedelta(days=6)
+    l7_prev_start_str = l7_prev_start_dt.isoformat()
+    l7_prev_end_str = l7_prev_end_dt.isoformat()
+
+    mtd_start_dt = date(t1_dt.year, t1_dt.month, 1)
+    mtd_start_str = mtd_start_dt.isoformat()
+    mtd_days = (t1_dt - mtd_start_dt).days + 1
+    last_day_prev_month = mtd_start_dt - timedelta(days=1)
+    prev_month_start_dt = last_day_prev_month - timedelta(days=mtd_days - 1)
+    mtd_prev_start_str = prev_month_start_dt.isoformat()
+    mtd_prev_end_str = last_day_prev_month.isoformat()
+
+    try:
+        min_dt = datetime.fromisoformat(DATA_MIN_DATE).date()
+    except Exception:
+        min_dt = date(2026, 10, 13)
+    total_days = max(1, (t1_dt - min_dt).days + 1)
+
+    yest_label = t1_dt.strftime("%d %b %Y")
+    l7_label = f"{l7_start_dt.strftime('%d %b')} – {t1_dt.strftime('%d %b')}"
+    mtd_label = f"{mtd_start_dt.strftime('%d %b')} – {t1_dt.strftime('%d %b')}"
+    all_label = f"{min_dt.strftime('%d %b')} – {t1_dt.strftime('%d %b')} ({total_days}d)"
+
+    hero_sql = f"""
+    SELECT
+        -- Yesterday ({yest_date_str})
+        COALESCE(SUM(CASE WHEN bill_date = '{yest_date_str}' THEN amount_incl_gst END), 0) AS yest_sales,
+        COUNT(DISTINCT CASE WHEN bill_date = '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS yest_bills,
+        COALESCE(SUM(CASE WHEN bill_date = '{yest_prev_date_str}' THEN amount_incl_gst END), 0) AS yest_prev_sales,
+        COUNT(DISTINCT CASE WHEN bill_date = '{yest_prev_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS yest_prev_bills,
+
+        -- Last 7D ({l7_start_str} to {yest_date_str})
+        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{l7_start_str}' AND '{yest_date_str}' THEN amount_incl_gst END), 0) AS l7_sales,
+        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{l7_start_str}' AND '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS l7_bills,
+        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{l7_prev_start_str}' AND '{l7_prev_end_str}' THEN amount_incl_gst END), 0) AS l7_prev_sales,
+        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{l7_prev_start_str}' AND '{l7_prev_end_str}' AND txn_type = 'Sale' THEN bill_key END) AS l7_prev_bills,
+
+        -- MTD ({mtd_start_str} to {yest_date_str})
+        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{mtd_start_str}' AND '{yest_date_str}' THEN amount_incl_gst END), 0) AS mtd_sales,
+        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{mtd_start_str}' AND '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS mtd_bills,
+        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{mtd_prev_start_str}' AND '{mtd_prev_end_str}' THEN amount_incl_gst END), 0) AS mtd_prev_sales,
+        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{mtd_prev_start_str}' AND '{mtd_prev_end_str}' AND txn_type = 'Sale' THEN bill_key END) AS mtd_prev_bills,
+
+        -- All Data ({DATA_MIN_DATE} to {yest_date_str})
+        COALESCE(SUM(CASE WHEN bill_date <= '{yest_date_str}' THEN amount_incl_gst END), 0) AS all_sales,
+        COUNT(DISTINCT CASE WHEN bill_date <= '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS all_bills
+    FROM `{VIEW_NAME}`
+    WHERE {where_hero}
+    """
+
+    # Query 8: Dormant Stores
+    zero_sales_sql = f"""
+    SELECT
+        store_name,
+        store_type,
+        MAX(bill_date) AS last_active_date
+    FROM `{VIEW_NAME}`
+    WHERE bill_date >= '{DATA_MIN_DATE}' AND bill_date <= '{yest_date_str}'
+    GROUP BY store_name, store_type
+    HAVING last_active_date < DATE_SUB(DATE('{yest_date_str}'), INTERVAL {INSIGHT_THRESHOLDS['stores_zero_sales_days']} DAY)
+    """
+
+    # Query 9: Store discount analysis for rule-based insights
+    store_disc_sql = f"""
+    SELECT
+        store_name,
+        COALESCE(SUM(CASE WHEN txn_type = 'Sale' THEN discount ELSE 0 END), 0) AS sale_discount,
+        COALESCE(SUM(CASE WHEN txn_type = 'Sale' THEN mrp_value ELSE 0 END), 0) AS sale_mrp_value,
+        COALESCE(SUM(amount_incl_gst), 0) AS net_sales
+    FROM `{VIEW_NAME}`
+    WHERE {where_curr}
+    GROUP BY store_name
+    HAVING sale_mrp_value > 50000
+    """
+
+    # Run all 9 queries in parallel via ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=9) as executor:
+        f_kpi = executor.submit(execute_query, kpi_sql, params_curr + params_prev)
+        f_daily = executor.submit(execute_query, agg_sql, params_curr)
+        f_hourly = executor.submit(execute_query, hourly_sql, params_curr)
+        f_split = executor.submit(execute_query, split_sql, params_curr)
+        f_store_perf = executor.submit(execute_query, store_perf_sql, params_curr)
+        f_dow = executor.submit(execute_query, dow_sql, params_curr)
+        f_hero = executor.submit(execute_query, hero_sql, params_hero)
+        f_zero = executor.submit(execute_query, zero_sales_sql)
+        f_disc = executor.submit(execute_query, store_disc_sql, params_curr)
+
+        kpi_rows = f_kpi.result()
+        daily_rows = f_daily.result()
+        hourly_rows = f_hourly.result()
+        split_rows = f_split.result()
+        store_perf_rows = f_store_perf.result()
+        dow_rows = f_dow.result()
+        try:
+            hero_raw_rows = f_hero.result()
+            hr = hero_raw_rows[0] if hero_raw_rows else {}
+        except Exception as e:
+            logger.error(f"Error executing hero_sql: {e}")
+            hr = {}
+        try:
+            zero_sales_stores = f_zero.result()
+        except Exception as e:
+            logger.error(f"Error executing zero_sales_sql: {e}")
+            zero_sales_stores = []
+        try:
+            store_disc_rows = f_disc.result()
+        except Exception as e:
+            logger.error(f"Error executing store_disc_sql: {e}")
+            store_disc_rows = []
+
+    curr_raw = next((r for r in kpi_rows if r["period"] == "curr"), {})
+    prev_raw = next((r for r in kpi_rows if r["period"] == "prev"), {})
+
+    kpi_curr = compute_derived_metrics(curr_raw)
+    kpi_prev = compute_derived_metrics(prev_raw) if prev_raw else None
+
+    # Query 2: Daily trend stats
+    for d in daily_rows:
+        d["aov"] = round(d["net_sales_incl_gst"] / d["bills"], 2) if d["bills"] > 0 else 0
+        d["margin_pct"] = round((d["gross_margin"] / d["net_sales_ex_gst"]) * 100.0, 1) if d["net_sales_ex_gst"] > 0 else 0
+        d["discount_pct"] = round((d["sale_discount"] / d["sale_mrp_value"]) * 100.0, 1) if d["sale_mrp_value"] > 0 else 0
+
+    # Query 4: Store type split
+    total_sales = sum(r["net_sales"] for r in split_rows) or 1
+    for r in split_rows:
+        r["share_pct"] = round((r["net_sales"] / total_sales) * 100.0, 1)
 
     # 1. Load store geo config for universe & metadata
     geo_config = load_store_geo()
@@ -322,30 +471,6 @@ def get_overview(
             "cum_share_pct": cum_pct
         })
 
-    # Query 6: Day of week averages
-    dow_sql = f"""
-    WITH daily_store_sales AS (
-        SELECT
-            bill_date,
-            FORMAT_DATE('%A', bill_date) AS day_name,
-            FORMAT_DATE('%a', bill_date) AS day_short,
-            EXTRACT(DAYOFWEEK FROM bill_date) AS day_num,
-            COALESCE(SUM(amount_incl_gst), 0) AS net_sales
-        FROM `{VIEW_NAME}`
-        WHERE {where_curr}
-        GROUP BY bill_date, day_name, day_short, day_num
-    )
-    SELECT
-        day_name,
-        day_short,
-        day_num,
-        AVG(net_sales) AS avg_sales,
-        COUNT(bill_date) AS days_count
-    FROM daily_store_sales
-    GROUP BY day_name, day_short, day_num
-    ORDER BY day_num
-    """
-    dow_rows = execute_query(dow_sql, params_curr)
     dow_list = [
         {
             "day_name": r["day_name"],
@@ -355,74 +480,6 @@ def get_overview(
         }
         for r in dow_rows
     ]
-
-    # Query 7: Hero Strip Periods Snapshot (Yesterday, Last 7D, MTD, All Data)
-    try:
-        t1_dt = datetime.fromisoformat(e_date).date()
-    except Exception:
-        t1_dt = date(2026, 11, 16)
-
-    yest_date_str = t1_dt.isoformat()
-    yest_prev_date_str = (t1_dt - timedelta(days=1)).isoformat()
-
-    l7_start_dt = t1_dt - timedelta(days=6)
-    l7_start_str = l7_start_dt.isoformat()
-    l7_prev_end_dt = l7_start_dt - timedelta(days=1)
-    l7_prev_start_dt = l7_prev_end_dt - timedelta(days=6)
-    l7_prev_start_str = l7_prev_start_dt.isoformat()
-    l7_prev_end_str = l7_prev_end_dt.isoformat()
-
-    mtd_start_dt = date(t1_dt.year, t1_dt.month, 1)
-    mtd_start_str = mtd_start_dt.isoformat()
-    mtd_days = (t1_dt - mtd_start_dt).days + 1
-    last_day_prev_month = mtd_start_dt - timedelta(days=1)
-    prev_month_start_dt = last_day_prev_month - timedelta(days=mtd_days - 1)
-    mtd_prev_start_str = prev_month_start_dt.isoformat()
-    mtd_prev_end_str = last_day_prev_month.isoformat()
-
-    try:
-        min_dt = datetime.fromisoformat(DATA_MIN_DATE).date()
-    except Exception:
-        min_dt = date(2026, 10, 13)
-    total_days = max(1, (t1_dt - min_dt).days + 1)
-
-    yest_label = t1_dt.strftime("%d %b %Y")
-    l7_label = f"{l7_start_dt.strftime('%d %b')} – {t1_dt.strftime('%d %b')}"
-    mtd_label = f"{mtd_start_dt.strftime('%d %b')} – {t1_dt.strftime('%d %b')}"
-    all_label = f"{min_dt.strftime('%d %b')} – {t1_dt.strftime('%d %b')} ({total_days}d)"
-
-    hero_sql = f"""
-    SELECT
-        -- Yesterday ({yest_date_str})
-        COALESCE(SUM(CASE WHEN bill_date = '{yest_date_str}' THEN amount_incl_gst END), 0) AS yest_sales,
-        COUNT(DISTINCT CASE WHEN bill_date = '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS yest_bills,
-        COALESCE(SUM(CASE WHEN bill_date = '{yest_prev_date_str}' THEN amount_incl_gst END), 0) AS yest_prev_sales,
-        COUNT(DISTINCT CASE WHEN bill_date = '{yest_prev_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS yest_prev_bills,
-
-        -- Last 7D ({l7_start_str} to {yest_date_str})
-        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{l7_start_str}' AND '{yest_date_str}' THEN amount_incl_gst END), 0) AS l7_sales,
-        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{l7_start_str}' AND '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS l7_bills,
-        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{l7_prev_start_str}' AND '{l7_prev_end_str}' THEN amount_incl_gst END), 0) AS l7_prev_sales,
-        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{l7_prev_start_str}' AND '{l7_prev_end_str}' AND txn_type = 'Sale' THEN bill_key END) AS l7_prev_bills,
-
-        -- MTD ({mtd_start_str} to {yest_date_str})
-        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{mtd_start_str}' AND '{yest_date_str}' THEN amount_incl_gst END), 0) AS mtd_sales,
-        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{mtd_start_str}' AND '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS mtd_bills,
-        COALESCE(SUM(CASE WHEN bill_date BETWEEN '{mtd_prev_start_str}' AND '{mtd_prev_end_str}' THEN amount_incl_gst END), 0) AS mtd_prev_sales,
-        COUNT(DISTINCT CASE WHEN bill_date BETWEEN '{mtd_prev_start_str}' AND '{mtd_prev_end_str}' AND txn_type = 'Sale' THEN bill_key END) AS mtd_prev_bills,
-
-        -- All Data ({DATA_MIN_DATE} to {yest_date_str})
-        COALESCE(SUM(CASE WHEN bill_date <= '{yest_date_str}' THEN amount_incl_gst END), 0) AS all_sales,
-        COUNT(DISTINCT CASE WHEN bill_date <= '{yest_date_str}' AND txn_type = 'Sale' THEN bill_key END) AS all_bills
-    FROM `{VIEW_NAME}`
-    WHERE {where_hero}
-    """
-    try:
-        hero_raw_rows = execute_query(hero_sql, params_hero)
-        hr = hero_raw_rows[0] if hero_raw_rows else {}
-    except Exception as e:
-        logger.error(f"Error executing hero_sql: {e}")
-        hr = {}
 
     # Extract 14-day sparkline from recent days
     recent_14_sparkline = [round(d["net_sales_incl_gst"], 2) for d in daily_rows[-14:]] if daily_rows else []
@@ -494,22 +551,6 @@ def get_overview(
     network_return_rate = kpi_curr.get("return_rate", 0)
 
     # 1. RISK: Stores with excessive discount giveaway
-    store_disc_sql = f"""
-    SELECT
-        store_name,
-        COALESCE(SUM(CASE WHEN txn_type = 'Sale' THEN discount ELSE 0 END), 0) AS sale_discount,
-        COALESCE(SUM(CASE WHEN txn_type = 'Sale' THEN mrp_value ELSE 0 END), 0) AS sale_mrp_value,
-        COALESCE(SUM(amount_incl_gst), 0) AS net_sales
-    FROM `{VIEW_NAME}`
-    WHERE {where_curr}
-    GROUP BY store_name
-    HAVING sale_mrp_value > 50000
-    """
-    try:
-        store_disc_rows = execute_query(store_disc_sql, params_curr)
-    except Exception as e:
-        logger.error(f"Error executing store_disc_sql: {e}")
-        store_disc_rows = []
     excess_discount_stores = []
     for s in store_disc_rows:
         d_pct = (s["sale_discount"] / s["sale_mrp_value"]) * 100.0 if s["sale_mrp_value"] > 0 else 0
@@ -540,21 +581,6 @@ def get_overview(
         })
 
     # 2. RISK: Dormant Stores
-    zero_sales_sql = f"""
-    SELECT
-        store_name,
-        store_type,
-        MAX(bill_date) AS last_active_date
-    FROM `{VIEW_NAME}`
-    WHERE bill_date >= '{DATA_MIN_DATE}' AND bill_date <= '{yest_date_str}'
-    GROUP BY store_name, store_type
-    HAVING last_active_date < DATE_SUB(DATE('{yest_date_str}'), INTERVAL {INSIGHT_THRESHOLDS['stores_zero_sales_days']} DAY)
-    """
-    try:
-        zero_sales_stores = execute_query(zero_sales_sql)
-    except Exception as e:
-        logger.error(f"Error executing zero_sales_sql: {e}")
-        zero_sales_stores = []
     if zero_sales_stores:
         s_names = [z["store_name"] for z in zero_sales_stores]
         insights.append({
@@ -638,11 +664,12 @@ def get_overview(
         }
     }
 
-    cache.set("overview", cache_params, result)
+    cache.set("overview", cache_params, result, data_version=data_version, request=request)
     return result
 
 @router.get("/drilldown")
 def get_metric_drilldown(
+    request: Request,
     metric: str = Query("net_sales_incl_gst"),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -660,7 +687,8 @@ def get_metric_drilldown(
     - Top 10 Contributing Stores
     - Top 10 Contributing Products
     """
-    e_date = end_date or DATA_MAX_DATE
+    max_d = get_max_date()
+    e_date = end_date or max_d
     if start_date:
         s_date = start_date
     else:
@@ -668,7 +696,7 @@ def get_metric_drilldown(
             e_dt_calc = datetime.fromisoformat(e_date).date()
             s_date = (e_dt_calc - timedelta(days=6)).isoformat()
         except Exception:
-            s_date = "2026-11-10"
+            s_date = (datetime.fromisoformat(max_d).date() - timedelta(days=6)).isoformat()
     if s_date < DATA_MIN_DATE:
         s_date = DATA_MIN_DATE
     if e_date < s_date:
@@ -682,7 +710,8 @@ def get_metric_drilldown(
         "dep": ",".join(sorted(departments)) if departments else "",
         "p": product or ""
     }
-    cached = cache.get("drilldown", cache_params)
+    data_version = get_data_version()
+    cached = cache.get("drilldown", cache_params, data_version=data_version, request=request)
     if cached:
         return cached
 
@@ -773,5 +802,5 @@ def get_metric_drilldown(
         "top_stores": top_stores,
         "top_products": top_prods
     }
-    cache.set("drilldown", cache_params, result)
+    cache.set("drilldown", cache_params, result, data_version=data_version, request=request)
     return result

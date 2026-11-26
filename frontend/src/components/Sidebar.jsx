@@ -10,11 +10,10 @@ import {
   Users2,
   Activity,
   MapPin,
-  Footprints,
-  Lock,
   ShieldCheck,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -31,7 +30,7 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
-  const { user, canViewPII } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <aside
@@ -122,24 +121,40 @@ export default function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[10px] shrink-0">
-                  {user.name.charAt(0)}
+                  {user?.name ? user.name.charAt(0) : 'U'}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[12px] font-medium text-slate-800 truncate leading-tight">{user.name}</div>
-                  <div className="text-[10px] text-slate-400 truncate leading-tight">{user.role}</div>
+                  <div className="text-[12px] font-medium text-slate-800 truncate leading-tight">{user?.name || 'Retail Ops'}</div>
+                  <div className="text-[10px] text-slate-400 truncate leading-tight">{user?.role || 'Company Access'}</div>
                 </div>
               </div>
-              <button
-                onClick={onToggleCollapse}
-                className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose size={15} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={logout}
+                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut size={14} />
+                </button>
+                <button
+                  onClick={onToggleCollapse}
+                  className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose size={15} />
+                </button>
+              </div>
             </div>
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+              title="Sign out"
+            >
+              <LogOut size={14} />
+            </button>
             <div
               className="p-1.5 rounded-md bg-emerald-50 text-emerald-600"
               title="Full Customer Info Active"

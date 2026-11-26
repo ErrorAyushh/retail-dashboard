@@ -1,5 +1,25 @@
 const API_BASE = '/api';
 
+export function getStoredToken() {
+  try {
+    return localStorage.getItem('kadam_token');
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem('kadam_token', token);
+    } else {
+      localStorage.removeItem('kadam_token');
+    }
+  } catch (e) {
+    console.error('Failed to update stored token:', e);
+  }
+}
+
 function buildQueryString(params = {}) {
   const query = new URLSearchParams();
   for (const [key, val] of Object.entries(params)) {
@@ -19,12 +39,24 @@ function buildQueryString(params = {}) {
 async function request(endpoint, params = {}, options = {}) {
   const qs = buildQueryString(params);
   const url = `${API_BASE}${endpoint}${qs}`;
+  const token = getStoredToken();
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
 
   const res = await fetch(url, { ...options, headers });
+  if (res.status === 401 && endpoint !== '/auth/google') {
+    // Missing or invalid session -> clear token and redirect to login
+    setStoredToken(null);
+    try {
+      localStorage.removeItem('kadam_user');
+    } catch {}
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
   if (!res.ok) {
     const errorText = await res.text().catch(() => res.statusText);
     throw new Error(`API Error [${res.status}]: ${errorText}`);
@@ -33,6 +65,15 @@ async function request(endpoint, params = {}, options = {}) {
 }
 
 export const api = {
+  // Auth
+  loginWithGoogle: (credential) =>
+    request('/auth/google', {}, {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    }),
+  getMe: () => request('/auth/me'),
+
+  // Data routes
   getFiltersMeta: () => request('/filters/meta'),
   getMetricsRegistry: () => request('/metrics/registry'),
   getOverview: (filters) => request('/overview', filters),

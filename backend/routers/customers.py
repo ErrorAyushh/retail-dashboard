@@ -166,7 +166,7 @@ def get_customers(
         top_customers.append({
             "customer_key": c["customer_key"],
             "customer_name": raw_name.strip() if raw_name.strip() else "Walk-in Customer",
-            "customer_mobile": raw_mobile.strip() if raw_mobile.strip() else "—",
+            "customer_mobile": mask_mobile(raw_mobile),
             "customer_code": raw_code.strip() if raw_code.strip() else "—",
             "customer_gst_number": raw_gst.strip() if raw_gst.strip() else "—",
             "bill_count": c["bill_count"],
@@ -175,7 +175,7 @@ def get_customers(
             "first_visit": str(c["first_visit"]),
             "latest_visit": str(c["latest_visit"]),
             "stores_visited": c["stores_visited"],
-            "is_masked": False
+            "is_masked": True
         })
 
     # 4. GST Business Invoices Table (has_gstin = true)
@@ -213,13 +213,13 @@ def get_customers(
             "store_type": g["store_type"],
             "product_name": g["product_name"],
             "customer_name": raw_name.strip() if raw_name.strip() else "B2B Purchaser",
-            "customer_mobile": raw_mobile.strip() if raw_mobile.strip() else "—",
+            "customer_mobile": mask_mobile(raw_mobile),
             "customer_gst_number": raw_gst.strip() if raw_gst.strip() else "—",
             "amount_incl_gst": round(float(g["amount_incl_gst"]), 2),
             "sales_ex_gst": round(float(g["sales_ex_gst"]), 2),
             "gst": round(float(g["gst"]), 2),
             "units": int(g["units"]),
-            "is_masked": False
+            "is_masked": True
         })
 
     result = {

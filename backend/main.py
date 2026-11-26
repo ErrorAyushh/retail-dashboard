@@ -1,14 +1,24 @@
 """
 Main FastAPI application entrypoint for Kadam (Offline Retail Dashboard).
+Configured with strict CORS, GZip compression, timing/logging middleware,
+Google OAuth + signed JWT authentication, and pre-warmed cache support.
 """
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
-from backend.config import DEFAULT_STORE_TYPE, DATA_MIN_DATE, DATA_MAX_DATE
+from backend.config import (
+    CORS_ORIGINS,
+    DEFAULT_STORE_TYPE,
+    DATA_MIN_DATE
+)
 from backend.metrics import METRIC_REGISTRY
 from backend.middleware import RequestLoggingMiddleware
+from backend.auth import get_current_user
 from backend.routers import (
+    auth,
+    warmup,
     filters,
     overview,
     stores,
@@ -34,35 +44,48 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware for development and deployment
+# 1. GZip compression middleware (minimum_size=1000 bytes)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# 2. Strict CORS middleware (strictly from CORS_ORIGINS, localhost-only default)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Cache", "X-Process-Time-Ms"]
 )
 
-# Custom logging and timing middleware
+# 3. Custom logging, PII scrubbing, timing, and X-Cache header middleware
 app.add_middleware(RequestLoggingMiddleware)
 
-# Include page routers
-app.include_router(filters.router)
-app.include_router(overview.router)
-app.include_router(stores.router)
-app.include_router(geography.router)
-app.include_router(products.router)
-app.include_router(discounts.router)
-app.include_router(returns.router)
-app.include_router(staff.router)
-app.include_router(customers.router)
-app.include_router(health.router)
-
-@app.get("/healthz")
-def healthz():
+# Public health check endpoint
+@app.get("/health")
+def health_check():
+    """Public health check endpoint for container and load-balancer probes."""
     return {"status": "ok", "app": "kadam", "subdomain": "kadam"}
 
-@app.get("/api/metrics/registry")
+# Public auth endpoints (login, exchange Google token)
+app.include_router(auth.router)
+
+# Cache warmup endpoint (protected by X-Warmup-Secret header)
+app.include_router(warmup.router)
+
+# Protected data routers (require valid signed Bearer token)
+app.include_router(filters.router, dependencies=[Depends(get_current_user)])
+app.include_router(overview.router, dependencies=[Depends(get_current_user)])
+app.include_router(stores.router, dependencies=[Depends(get_current_user)])
+app.include_router(geography.router, dependencies=[Depends(get_current_user)])
+app.include_router(products.router, dependencies=[Depends(get_current_user)])
+app.include_router(discounts.router, dependencies=[Depends(get_current_user)])
+app.include_router(returns.router, dependencies=[Depends(get_current_user)])
+app.include_router(staff.router, dependencies=[Depends(get_current_user)])
+app.include_router(customers.router, dependencies=[Depends(get_current_user)])
+app.include_router(health.router, dependencies=[Depends(get_current_user)])
+
+# Protected metric definitions registry
+@app.get("/api/metrics/registry", dependencies=[Depends(get_current_user)])
 def get_metrics_registry():
     """
     Returns complete single-source-of-truth registry of metrics, definitions, and tooltips

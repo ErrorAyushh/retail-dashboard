@@ -15,8 +15,7 @@ from backend.config import (
     VIEW_NAME,
     MAX_BYTES_BILLED,
     QUERY_TIMEOUT_SECONDS,
-    DATA_MIN_DATE,
-    DATA_MAX_DATE
+    DATA_MIN_DATE
 )
 
 logger = logging.getLogger("kadam.db")
@@ -173,3 +172,62 @@ def execute_query(sql: str, parameters: Optional[List[Any]] = None) -> List[Dict
     except GoogleAPICallError as e:
         logger.error(f"BigQuery execution failed: {str(e)}")
         raise
+
+# Dynamic data bounds cache (refreshed every 15 minutes)
+_DATA_BOUNDS_CACHE: Dict[str, Any] = {
+    "min_date": DATA_MIN_DATE,
+    "max_date": None,
+    "data_version": None,
+    "cached_at": 0.0
+}
+
+def get_latest_data_bounds() -> Tuple[str, str, str]:
+    """
+    Returns (min_date, max_date, data_version) dynamically queried from BigQuery.
+    Caches metadata for 15 minutes to eliminate redundant full scans.
+    """
+    now = time.time()
+    if _DATA_BOUNDS_CACHE["max_date"] and (now - _DATA_BOUNDS_CACHE["cached_at"]) < 900:
+        return (
+            _DATA_BOUNDS_CACHE["min_date"],
+            _DATA_BOUNDS_CACHE["max_date"],
+            _DATA_BOUNDS_CACHE["data_version"]
+        )
+
+    try:
+        sql = f"""
+        SELECT 
+            MIN(bill_date) AS min_d, 
+            MAX(bill_date) AS max_d, 
+            FORMAT_TIMESTAMP('%Y%m%d%H%M%S', MAX(pulled_at)) AS max_p 
+        FROM `{VIEW_NAME}`
+        """
+        rows = execute_query(sql)
+        if rows and rows[0].get("max_d"):
+            r = rows[0]
+            _DATA_BOUNDS_CACHE["min_date"] = str(r["min_d"])
+            _DATA_BOUNDS_CACHE["max_date"] = str(r["max_d"])
+            _DATA_BOUNDS_CACHE["data_version"] = str(r.get("max_p") or r["max_d"])
+            _DATA_BOUNDS_CACHE["cached_at"] = now
+            return (
+                _DATA_BOUNDS_CACHE["min_date"],
+                _DATA_BOUNDS_CACHE["max_date"],
+                _DATA_BOUNDS_CACHE["data_version"]
+            )
+    except Exception as e:
+        logger.error(f"Failed to fetch dynamic data bounds from BigQuery: {e}")
+
+    # Fallback to last known good if BigQuery is unreachable
+    fallback_max = _DATA_BOUNDS_CACHE["max_date"] or "2026-11-25"
+    fallback_dv = _DATA_BOUNDS_CACHE["data_version"] or fallback_max
+    return _DATA_BOUNDS_CACHE["min_date"], fallback_max, fallback_dv
+
+def get_max_date() -> str:
+    """Returns the latest bill_date dynamically from BigQuery."""
+    _, max_d, _ = get_latest_data_bounds()
+    return max_d
+
+def get_data_version() -> str:
+    """Returns the latest data_version (timestamp of latest ingestion) for cache keying."""
+    _, _, dv = get_latest_data_bounds()
+    return dv

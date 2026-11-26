@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FilterProvider } from './context/FilterContext';
 import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppShell from './layouts/AppShell';
+import Login from './pages/Login';
 import Overview from './pages/Overview';
 import Stores from './pages/Stores';
 import Geography from './pages/Geography';
@@ -20,7 +22,17 @@ export default function App() {
         <AuthProvider>
           <FilterProvider>
             <Routes>
-              <Route element={<AppShell />}>
+              {/* Public route */}
+              <Route path="/login" element={<Login />} />
+
+              {/* Protected dashboard routes */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppShell />
+                  </ProtectedRoute>
+                }
+              >
                 <Route path="/" element={<Navigate to="/overview" replace />} />
                 <Route path="/overview" element={<Overview />} />
                 <Route path="/stores" element={<Stores />} />

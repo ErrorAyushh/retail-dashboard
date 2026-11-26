@@ -8,10 +8,10 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Query, HTTPException
 
-from backend.db import execute_query, build_filter_clause
+from backend.db import execute_query, build_filter_clause, get_max_date, get_data_version
 from backend.metrics import get_sql_metric_aggregates, compute_derived_metrics
 from backend.cache import cache
-from backend.config import VIEW_NAME, DEFAULT_STORE_TYPE, DATA_MIN_DATE, DATA_MAX_DATE
+from backend.config import VIEW_NAME, DEFAULT_STORE_TYPE, DATA_MIN_DATE
 from backend.geo import load_store_geo, get_store_geo, validate_stores, is_new_store
 
 router = APIRouter(prefix="/api/geography", tags=["geography"])
@@ -53,7 +53,7 @@ def get_geography_data(
     """
     # Handle direct function call vs FastAPI query injection
     s_date = start_date if (isinstance(start_date, str) and start_date) else DATA_MIN_DATE
-    e_date = end_date if (isinstance(end_date, str) and end_date) else DATA_MAX_DATE
+    e_date = end_date if (isinstance(end_date, str) and end_date) else get_max_date()
     st_val = store_type if isinstance(store_type, str) else DEFAULT_STORE_TYPE
     mat_only = bool(mature_only) if not hasattr(mature_only, "default") else False
     reg_list = regions if isinstance(regions, list) else None
@@ -831,7 +831,7 @@ def get_geography_top_products(
     Footwear only vs All items, index vs network calculation, and Top 50 products x 16 states heatmap.
     """
     s_date = start_date if (isinstance(start_date, str) and start_date) else DATA_MIN_DATE
-    e_date = end_date if (isinstance(end_date, str) and end_date) else DATA_MAX_DATE
+    e_date = end_date if (isinstance(end_date, str) and end_date) else get_max_date()
     st_val = store_type if isinstance(store_type, str) else DEFAULT_STORE_TYPE
     reg_list = regions if isinstance(regions, list) else None
     sto_list = stores if isinstance(stores, list) else None

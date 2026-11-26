@@ -3,10 +3,10 @@ Filters metadata router.
 Provides available filter dimensions and date bounds for the top bar filter controls.
 """
 import logging
-from fastapi import APIRouter
-from backend.db import execute_query
+from fastapi import APIRouter, Request
+from backend.db import execute_query, get_max_date, get_data_version
 from backend.cache import cache
-from backend.config import VIEW_NAME, DEFAULT_STORE_TYPE, DATA_MIN_DATE, DATA_MAX_DATE
+from backend.config import VIEW_NAME, DEFAULT_STORE_TYPE, DATA_MIN_DATE
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,9 @@ def normalize_region(name: str) -> str:
     return REGION_CANONICAL_MAP.get(clean.upper(), clean.title())
 
 @router.get("/meta")
-def get_filters_metadata():
-    cached = cache.get("filters:meta_v2", {})
+def get_filters_metadata(request: Request):
+    data_version = get_data_version()
+    cached = cache.get("filters:meta_v2", {}, data_version=data_version, request=request)
     if cached:
         return cached
 
@@ -79,7 +80,7 @@ def get_filters_metadata():
         logger.error(f"Error executing stores query: {e}")
         stores_rows = []
 
-    effective_max = str(meta.get("max_date") or DATA_MAX_DATE)
+    effective_max = str(meta.get("max_date") or get_max_date())
     effective_min = str(meta.get("min_date") or DATA_MIN_DATE)
     if effective_min < DATA_MIN_DATE:
         effective_min = DATA_MIN_DATE
@@ -109,5 +110,5 @@ def get_filters_metadata():
         "default_store_type": DEFAULT_STORE_TYPE,
     }
 
-    cache.set("filters:meta_v2", {}, result)
+    cache.set("filters:meta_v2", {}, result, data_version=data_version, request=request)
     return result
